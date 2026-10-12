@@ -1,0 +1,9 @@
+{
+    "name": "rtp/kanban",
+    "description": "Sistema Kanban RTP",
+    "type": "project",
+    "require": {
+        "php": ">=8.1",
+        "phpmailer/phpmailer": "^6.9"
+    }
+}
