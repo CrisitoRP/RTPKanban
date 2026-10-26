@@ -13,8 +13,12 @@ $accion = $d['accion'] ?? 'archivar';
 
 if (!$id_actividad) json_response(['error' => 'ID requerido'], 400);
 
-// Solo se pueden archivar actividades completadas
-$a = db()->prepare("SELECT estado FROM gestion_actividades WHERE id_actividad = ?");
+// 🔍 Obtener info de la actividad (estado, proyecto y título)
+$a = db()->prepare("
+    SELECT id_proyecto, titulo, estado
+    FROM gestion_actividades
+    WHERE id_actividad = ?
+");
 $a->execute([$id_actividad]);
 $act = $a->fetch();
 
@@ -23,18 +27,43 @@ if ($accion === 'archivar' && $act['estado'] !== 'completada') {
     json_response(['error' => 'Solo se pueden archivar actividades completadas'], 400);
 }
 
+$id_proyecto = $act['id_proyecto'];
+$titulo_actividad = $act['titulo'];
+
+// 🔒 Verificar que el proyecto NO esté bloqueado
+bloquear_si_proyecto_bloqueado($id_proyecto);
+
 if ($accion === 'archivar') {
     db()->prepare("
         UPDATE gestion_actividades
         SET archivada = TRUE, archivada_en = NOW(), archivada_por = ?
         WHERE id_actividad = ?
     ")->execute([$user['id_usuario'], $id_actividad]);
+
+    // 📝 Registrar en el historial
+    registrar_historial(
+        $id_proyecto,
+        'edicion',
+        'actividad_archivada',
+        'Se archivó la actividad "' . $titulo_actividad . '"',
+        ['id_actividad' => $id_actividad]
+    );
+
 } else {
     db()->prepare("
         UPDATE gestion_actividades
         SET archivada = FALSE, archivada_en = NULL, archivada_por = NULL
         WHERE id_actividad = ?
     ")->execute([$id_actividad]);
+
+    // 📝 Registrar en el historial
+    registrar_historial(
+        $id_proyecto,
+        'edicion',
+        'actividad_desarchivada',
+        'Se desarchivó la actividad "' . $titulo_actividad . '"',
+        ['id_actividad' => $id_actividad]
+    );
 }
 
 json_response(['ok' => true]);

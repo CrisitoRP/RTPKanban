@@ -91,7 +91,8 @@ function puede_gestionar($user, $nivel = 'proyecto') {
 
 
 /**
- * Envía un correo usando PHPMailer
+ * Envía un correo usando PHPMailer.
+ * 🔍 Versión con DEBUG activado para diagnosticar lentitud.
  */
 function enviar_correo($destinatario, $nombre_dest, $asunto, $cuerpo_html) {
     require_once __DIR__ . '/../vendor/autoload.php';
@@ -99,30 +100,141 @@ function enviar_correo($destinatario, $nombre_dest, $asunto, $cuerpo_html) {
     $mail = new PHPMailer\PHPMailer\PHPMailer(true);
 
     try {
-        // Configuración SMTP
+        // ================================================================
+        // 🔍 DEBUG — Mide tiempos y muestra mensajes SMTP en el log
+        // ================================================================
+        $mail->SMTPDebug = 3; // 0=silencioso, 2=mensajes SMTP, 3=verbose
+        $mail->Debugoutput = function($str, $level) {
+            error_log("[PHPMailer] " . trim($str));
+        };
+
+        $t0 = microtime(true);
+        error_log("[PHPMailer] ===== INICIO envío a $destinatario =====");
+
+        // ================================================================
+        // CONFIGURACIÓN SMTP
+        // ================================================================
+        $puerto = (int) env('MAIL_PORT', 587);
+
         $mail->isSMTP();
         $mail->Host       = env('MAIL_HOST', 'smtp.gmail.com');
         $mail->SMTPAuth   = true;
         $mail->Username   = env('MAIL_USER');
         $mail->Password   = env('MAIL_PASS');
-        $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = (int) env('MAIL_PORT', 587);
-        $mail->CharSet    = 'UTF-8';
 
-        // Remitente y destinatario
+        // Si el puerto es 465 → SMTPS (SSL). Si es 587 → STARTTLS.
+        if ($puerto === 465) {
+            $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+        } else {
+            $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+        }
+
+        $mail->Port    = $puerto;
+        $mail->CharSet = 'UTF-8';
+
+        // Timeout de conexión (evita que se cuelgue si Gmail no responde)
+        $mail->Timeout = 15;
+        $mail->SMTPKeepAlive = false;
+
+        // ================================================================
+        // REMITENTE Y DESTINATARIO
+        // ================================================================
         $mail->setFrom(env('MAIL_USER'), env('MAIL_FROM_NAME', 'RTP Kanban'));
         $mail->addAddress($destinatario, $nombre_dest);
 
-        // Contenido
+        // ================================================================
+        // CONTENIDO
+        // ================================================================
         $mail->isHTML(true);
         $mail->Subject = $asunto;
         $mail->Body    = $cuerpo_html;
         $mail->AltBody = strip_tags($cuerpo_html);
 
+        // ================================================================
+        // ENVÍO
+        // ================================================================
+        $tAntesDeEnviar = microtime(true);
+        error_log("[PHPMailer] Setup completado en " . round(($tAntesDeEnviar - $t0) * 1000) . " ms. Enviando...");
+
         $mail->send();
+
+        $t1 = microtime(true);
+        error_log("[PHPMailer] ✅ Envío OK — Total: " . round($t1 - $t0, 2) . " segundos");
+        error_log("[PHPMailer] ===== FIN envío a $destinatario =====");
+
         return true;
+
     } catch (Exception $e) {
-        error_log("Error PHPMailer: " . $mail->ErrorInfo);
+        $tError = microtime(true);
+        error_log("[PHPMailer] ❌ Error tras " . round($tError - $t0, 2) . " segundos: " . $mail->ErrorInfo);
+        error_log("[PHPMailer] ===== FIN con error =====");
         return false;
+    }
+}
+
+/* ============================================================
+   HISTORIAL DE PROYECTO
+   ============================================================ */
+
+/**
+ * Registra un evento en el historial del proyecto.
+ *
+ * @param int    $id_proyecto  ID del proyecto
+ * @param string $tipo         'creacion' | 'eliminacion' | 'usuario' | 'bloqueo' | 'edicion'
+ * @param string $accion       Identificador técnico: 'proyecto_creado', 'actividad_creada', etc.
+ * @param string $descripcion  Texto legible para el usuario
+ * @param array  $metadata     Datos extra (opcional)
+ */
+function registrar_historial($id_proyecto, $tipo, $accion, $descripcion, $metadata = null) {
+    $user = current_user();
+    $id_usuario = $user['id_usuario'] ?? null;
+
+    try {
+        $stmt = db()->prepare("
+            INSERT INTO gestion_historial_proyecto
+                (id_proyecto, id_usuario, tipo, accion, descripcion, metadata)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $id_proyecto,
+            $id_usuario,
+            $tipo,
+            $accion,
+            $descripcion,
+            $metadata ? json_encode($metadata, JSON_UNESCAPED_UNICODE) : null
+        ]);
+    } catch (Exception $e) {
+        error_log("Error registrando historial: " . $e->getMessage());
+    }
+}
+
+/* ============================================================
+   BLOQUEO DE PROYECTO
+   ============================================================ */
+
+/**
+ * Devuelve true si el proyecto está bloqueado.
+ */
+function proyecto_bloqueado($id_proyecto) {
+    try {
+        $stmt = db()->prepare("SELECT bloqueado FROM gestion_proyectos WHERE id_proyecto = ?");
+        $stmt->execute([$id_proyecto]);
+        $row = $stmt->fetch();
+        return $row && !empty($row['bloqueado']);
+    } catch (Exception $e) {
+        error_log("Error consultando bloqueo: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Corta la ejecución con un JSON de error si el proyecto está bloqueado.
+ * Úsala al inicio de cualquier endpoint que modifique datos del proyecto.
+ */
+function bloquear_si_proyecto_bloqueado($id_proyecto) {
+    if (proyecto_bloqueado($id_proyecto)) {
+        json_response([
+            'error' => 'El proyecto está bloqueado. No se pueden realizar cambios hasta desbloquearlo.'
+        ], 403);
     }
 }

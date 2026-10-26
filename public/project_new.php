@@ -167,6 +167,156 @@ if ($user['rol'] === 'visualizador') {
     transform: scale(1.1);
 }
 
+/* ============ PASO 3: FECHA DE INICIO ============ */
+.apertura-opciones {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 22px;
+}
+.apertura-opcion {
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px 18px;
+    cursor: pointer;
+    transition: all .2s ease;
+    text-align: center;
+    background: white;
+    position: relative;
+}
+.apertura-opcion:hover {
+    border-color: var(--rtp-verde);
+    background: #f8fef0;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(120, 190, 32, 0.15);
+}
+.apertura-opcion.seleccionada {
+    border-color: var(--rtp-verde);
+    background: #ecf9d9;
+    box-shadow: 0 6px 16px rgba(120, 190, 32, 0.2);
+}
+.apertura-opcion.seleccionada::after {
+    content: '✓';
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: 24px;
+    height: 24px;
+    background: var(--rtp-verde);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 12pt;
+    box-shadow: 0 2px 6px rgba(120, 190, 32, 0.4);
+}
+.apertura-opcion .op-icon {
+    font-size: 28pt;
+    display: block;
+    margin-bottom: 10px;
+}
+.apertura-opcion .op-titulo {
+    font-weight: 700;
+    font-size: 11.5pt;
+    color: var(--rtp-guinda);
+    margin-bottom: 4px;
+}
+.apertura-opcion .op-desc {
+    font-size: 9.5pt;
+    color: var(--rtp-gris);
+    line-height: 1.4;
+}
+
+/* Panel de programación (aparece si elige "Programar") */
+.programacion-panel {
+    display: none;
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 22px 24px;
+    border-left: 4px solid var(--rtp-guinda);
+    margin-top: 6px;
+    animation: slideDown .25s ease;
+}
+.programacion-panel.visible { display: block; }
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.programacion-panel .prog-label {
+    display: block;
+    font-size: 10.5pt;
+    color: var(--rtp-guinda);
+    font-weight: 700;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.programacion-panel input[type="date"],
+.programacion-panel input[type="time"] {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 12pt;
+    font-family: inherit;
+    color: var(--rtp-guinda);
+    font-weight: 700;
+    background: white;
+    transition: all .15s;
+    cursor: pointer;
+}
+.programacion-panel input[type="date"]:hover,
+.programacion-panel input[type="time"]:hover {
+    border-color: var(--rtp-verde);
+}
+.programacion-panel input[type="date"]:focus,
+.programacion-panel input[type="time"]:focus {
+    outline: none;
+    border-color: var(--rtp-verde);
+    box-shadow: 0 0 0 3px rgba(120, 190, 32, 0.15);
+}
+
+/* Color de los iconos nativos del calendario */
+.programacion-panel input[type="date"]::-webkit-calendar-picker-indicator,
+.programacion-panel input[type="time"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    filter: invert(48%) sepia(85%) saturate(1054%) hue-rotate(60deg) brightness(95%) contrast(90%);
+    transform: scale(1.2);
+}
+
+.programacion-panel .prog-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+}
+.programacion-panel .prog-hint {
+    font-size: 9.5pt;
+    color: var(--rtp-gris);
+    margin-top: 10px;
+    line-height: 1.5;
+    font-style: italic;
+}
+.programacion-panel .prog-hint b { color: var(--rtp-guinda); font-style: normal; }
+
+/* Preview de la fecha seleccionada */
+.prog-preview {
+    margin-top: 14px;
+    padding: 12px 16px;
+    background: #fff7ed;
+    border-left: 4px solid var(--rtp-dorado);
+    border-radius: 8px;
+    font-size: 10pt;
+    color: #78350f;
+    line-height: 1.5;
+    display: none;
+}
+.prog-preview.visible { display: block; }
+.prog-preview b { color: var(--rtp-guinda); }
+
 /* ============ INVITACIONES ============ */
 .info-roles {
     background: #f8fafc;
@@ -287,6 +437,10 @@ if ($user['rol'] === 'visualizador') {
                 </div>
                 <div class="wizard-step" data-step="3">
                     <div class="step-num">3</div>
+                    <div class="step-label">Fecha de inicio<br>del proyecto</div>
+                </div>
+                <div class="wizard-step" data-step="4">
+                    <div class="step-num">4</div>
                     <div class="step-label">Invitar<br>usuarios</div>
                 </div>
             </div>
@@ -323,13 +477,61 @@ if ($user['rol'] === 'visualizador') {
 
                     <div class="wizard-actions">
                         <button class="btn btn-outline" onclick="irPaso1()">← Regresar</button>
-                        <button class="btn" onclick="irPaso3()">Invitar usuarios →</button>
+                        <button class="btn" onclick="irPaso3()">Siguiente →</button>
                     </div>
                 </div>
             </div>
 
-            <!-- ============ PASO 3 ============ -->
+            <!-- ============ PASO 3: FECHA DE INICIO ============ -->
             <div class="wizard-panel" id="panel3">
+                <div class="wizard-card">
+                    <h2>Fecha de inicio del proyecto</h2>
+                    <p class="sub">Elige cuándo quieres que este proyecto esté disponible para el equipo.</p>
+
+                    <!-- Opciones -->
+                    <div class="apertura-opciones">
+                        <div class="apertura-opcion" id="opAhora" onclick="seleccionarApertura('ahora')">
+                            <span class="op-icon">⚡</span>
+                            <div class="op-titulo">Disponible ahora mismo</div>
+                            <div class="op-desc">El proyecto se abrirá al instante. Todos podrán acceder de inmediato.</div>
+                        </div>
+
+                        <div class="apertura-opcion" id="opProgramar" onclick="seleccionarApertura('programar')">
+                            <span class="op-icon">📅</span>
+                            <div class="op-titulo">Programar apertura</div>
+                            <div class="op-desc">Elige fecha y hora. El proyecto se abrirá automáticamente.</div>
+                        </div>
+                    </div>
+
+                    <!-- Panel de programación -->
+                    <div class="programacion-panel" id="panelProgramacion">
+                        <div class="prog-grid">
+                            <div>
+                                <label class="prog-label">📅 Fecha de apertura</label>
+                                <input type="date" id="fechaApertura" onchange="actualizarPreview()">
+                            </div>
+                            <div>
+                                <label class="prog-label">🕐 Hora</label>
+                                <input type="time" id="horaApertura" value="09:00" onchange="actualizarPreview()">
+                            </div>
+                        </div>
+
+                        <p class="prog-hint">
+                            💡 La fecha debe ser <b>posterior a hoy</b>. El proyecto estará oculto hasta ese momento.
+                        </p>
+
+                        <div class="prog-preview" id="progPreview"></div>
+                    </div>
+
+                    <div class="wizard-actions">
+                        <button class="btn btn-outline" onclick="irPaso2()">← Regresar</button>
+                        <button class="btn" id="btnNext3" disabled onclick="irPaso4()">Siguiente →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ PASO 4: INVITAR ============ -->
+            <div class="wizard-panel" id="panel4">
                 <div class="wizard-card">
                     <h2>Invitar usuarios al proyecto</h2>
                     <p class="sub">Envía invitaciones por correo o comparte el link generado.</p>
@@ -369,7 +571,7 @@ if ($user['rol'] === 'visualizador') {
                     </div>
 
                     <div class="wizard-actions">
-                        <button class="btn btn-outline" onclick="irPaso2()">← Regresar</button>
+                        <button class="btn btn-outline" onclick="irPaso3()">← Regresar</button>
                         <button class="btn" id="btnFinalizar" onclick="finalizar()">✓ Crear proyecto</button>
                     </div>
                 </div>
@@ -410,18 +612,23 @@ if ($user['rol'] === 'visualizador') {
 </div>
 
 <script>
-/* ============================================================
-   ESTADO
-   ============================================================ */
+/* ============================================================ */
+/* ESTADO */
+/* ============================================================ */
 const state = {
     proyecto: { nombre: '' },
     actividades: [],
     invitaciones: [],
+    apertura: {
+        tipo: null,       // 'ahora' | 'programar'
+        fecha: null,      // 'YYYY-MM-DD'
+        hora: null        // 'HH:MM'
+    }
 };
 
-/* ============================================================
-   NAVEGACIÓN
-   ============================================================ */
+/* ============================================================ */
+/* NAVEGACIÓN */
+/* ============================================================ */
 function mostrarPaso(n) {
     document.querySelectorAll('.wizard-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.wizard-step').forEach(s => {
@@ -442,17 +649,18 @@ function irPaso2() {
 }
 
 function irPaso3() { mostrarPaso(3); }
+function irPaso4() { mostrarPaso(4); }
 
-/* ============================================================
-   PASO 1
-   ============================================================ */
+/* ============================================================ */
+/* PASO 1 */
+/* ============================================================ */
 document.getElementById('proyectoNombre').addEventListener('input', function () {
     document.getElementById('btnNext1').disabled = this.value.trim().length < 3;
 });
 
-/* ============================================================
-   PASO 2
-   ============================================================ */
+/* ============================================================ */
+/* PASO 2 */
+/* ============================================================ */
 function abrirModalActividad() {
     document.getElementById('actTitle').value = '';
     document.getElementById('actFecha').value = '';
@@ -501,9 +709,90 @@ function renderActividades() {
     `).join('');
 }
 
-/* ============================================================
-   PASO 3
-   ============================================================ */
+/* ============================================================ */
+/* PASO 3 · FECHA DE INICIO */
+/* ============================================================ */
+function seleccionarApertura(tipo) {
+    state.apertura.tipo = tipo;
+
+    document.getElementById('opAhora').classList.toggle('seleccionada', tipo === 'ahora');
+    document.getElementById('opProgramar').classList.toggle('seleccionada', tipo === 'programar');
+
+    const panel = document.getElementById('panelProgramacion');
+    panel.classList.toggle('visible', tipo === 'programar');
+
+    if (tipo === 'ahora') {
+        // Limpiar programación
+        state.apertura.fecha = null;
+        state.apertura.hora = null;
+        document.getElementById('fechaApertura').value = '';
+        document.getElementById('horaApertura').value = '09:00';
+        document.getElementById('progPreview').classList.remove('visible');
+        document.getElementById('btnNext3').disabled = false;
+    } else {
+        // Establecer fecha mínima = mañana
+        const hoy = new Date();
+        hoy.setDate(hoy.getDate() + 1);
+        const yyyy = hoy.getFullYear();
+        const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+        const dd = String(hoy.getDate()).padStart(2, '0');
+        document.getElementById('fechaApertura').setAttribute('min', `${yyyy}-${mm}-${dd}`);
+
+        validarFechaProgramada();
+    }
+}
+
+function validarFechaProgramada() {
+    const fecha = document.getElementById('fechaApertura').value;
+    const hora = document.getElementById('horaApertura').value;
+    const preview = document.getElementById('progPreview');
+    const btn = document.getElementById('btnNext3');
+
+    state.apertura.fecha = fecha || null;
+    state.apertura.hora = hora || null;
+
+    if (!fecha || !hora) {
+        btn.disabled = true;
+        preview.classList.remove('visible');
+        return;
+    }
+
+    // Validar que la fecha+hora sea futura
+    const fechaHora = new Date(`${fecha}T${hora}:00`);
+    const ahora = new Date();
+
+    if (fechaHora <= ahora) {
+        btn.disabled = true;
+        preview.classList.add('visible');
+        preview.style.background = '#fde8ec';
+        preview.style.borderLeftColor = '#E5074C';
+        preview.style.color = '#991b1b';
+        preview.innerHTML = '⚠️ <b>Fecha inválida:</b> la fecha y hora deben ser posteriores a la actual.';
+        return;
+    }
+
+    btn.disabled = false;
+    preview.classList.add('visible');
+    preview.style.background = '#fff7ed';
+    preview.style.borderLeftColor = '#F08217';
+    preview.style.color = '#78350f';
+
+    const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const fechaBonita = fechaHora.toLocaleDateString('es-MX', opciones);
+    const horaBonita = fechaHora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+
+    preview.innerHTML = `⏳ El proyecto estará <b>programado</b> para abrirse el <b>${fechaBonita}</b> a las <b>${horaBonita}</b>. Hasta entonces no será visible.`;
+}
+
+function actualizarPreview() {
+    if (state.apertura.tipo === 'programar') {
+        validarFechaProgramada();
+    }
+}
+
+/* ============================================================ */
+/* PASO 4 · INVITACIONES */
+/* ============================================================ */
 function validarFormInvite() {
     const email = document.getElementById('inviteEmail').value.trim();
     const rol = document.getElementById('inviteRol').value;
@@ -515,7 +804,6 @@ function agregarInvitacion() {
     const email = document.getElementById('inviteEmail').value.trim();
     const rol = document.getElementById('inviteRol').value;
 
-    // Verificar duplicado
     if (state.invitaciones.some(i => i.email === email)) {
         alert('Ya agregaste este correo.');
         return;
@@ -555,11 +843,21 @@ function copiarLink() {
     alert('✅ Link copiado al portapapeles');
 }
 
-/* ============================================================
-   FINALIZAR
-   ============================================================ */
+/* ============================================================ */
+/* FINALIZAR */
+/* ============================================================ */
 async function finalizar() {
     if (!state.proyecto.nombre) { alert('Falta el nombre del proyecto.'); return; }
+
+    // Preparar fecha de apertura
+    let fecha_apertura = null;
+    if (state.apertura.tipo === 'programar') {
+        if (!state.apertura.fecha || !state.apertura.hora) {
+            alert('Debes seleccionar fecha y hora de apertura.');
+            return;
+        }
+        fecha_apertura = `${state.apertura.fecha} ${state.apertura.hora}:00`;
+    }
 
     const btn = document.getElementById('btnFinalizar');
     btn.disabled = true;
@@ -573,6 +871,7 @@ async function finalizar() {
                 nombre: state.proyecto.nombre,
                 actividades: state.actividades,
                 invitaciones: state.invitaciones,
+                fecha_apertura: fecha_apertura
             })
         });
 
@@ -585,7 +884,7 @@ async function finalizar() {
             return;
         }
 
-        // Mostrar resultado
+        // Mensaje de éxito
         let mensaje = '✅ Proyecto creado\n\n' +
                       '📋 Actividades: ' + state.actividades.length + '\n';
 
@@ -594,6 +893,11 @@ async function finalizar() {
             json.invitaciones_resultados.forEach(r => r.ok ? ok++ : fail++);
             mensaje += '✉️ Invitaciones enviadas: ' + ok;
             if (fail) mensaje += '\n⚠️ Fallidas: ' + fail;
+        }
+
+        if (json.abierto === false && json.fecha_apertura) {
+            const fh = new Date(json.fecha_apertura);
+            mensaje += '\n\n⏳ El proyecto se abrirá el ' + fh.toLocaleDateString('es-MX') + ' a las ' + fh.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
         }
 
         alert(mensaje);
@@ -606,9 +910,9 @@ async function finalizar() {
     }
 }
 
-/* ============================================================
-   HELPERS
-   ============================================================ */
+/* ============================================================ */
+/* HELPERS */
+/* ============================================================ */
 function escapeHtml(s) {
     return (s || '').replace(/[&<>"']/g, c => ({
         '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'

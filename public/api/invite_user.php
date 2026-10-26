@@ -42,6 +42,9 @@ $proyecto = $stmt->fetch();
 
 if (!$proyecto) json_response(['error' => 'Proyecto no encontrado'], 404);
 
+// 🔒 Verificar que el proyecto NO esté bloqueado
+bloquear_si_proyecto_bloqueado($id_proyecto);
+
 // Verificar si ya existe una invitación pendiente para ese correo
 $stmt = db()->prepare("
     SELECT 1 FROM gestion_invitaciones
@@ -65,6 +68,15 @@ try {
 } catch (Exception $e) {
     json_response(['error' => 'Error guardando invitación: ' . $e->getMessage()], 500);
 }
+
+// 📝 Registrar en el historial
+registrar_historial(
+    $id_proyecto,
+    'usuario',
+    'usuario_invitado',
+    'Se invitó a ' . $correo . ' con rol ' . $rol,
+    ['correo' => $correo, 'rol' => $rol]
+);
 
 // Armar link
 $link = env('APP_URL', 'http://localhost:8000') . '/invite.php?token=' . $token;

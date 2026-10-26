@@ -53,6 +53,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $invitacion) {
             ON CONFLICT (id_proyecto, id_usuario) DO UPDATE SET rol_miembro = EXCLUDED.rol_miembro
         ")->execute([$invitacion['id_proyecto'], $id_usuario, $invitacion['rol_miembro']]);
 
+        // 🆕 Vincular como responsable de la actividad si la invitación lo trae
+        if (!empty($invitacion['id_actividad'])) {
+            // Verificar que no exista ya
+            $stmt = db()->prepare("
+                SELECT 1 FROM gestion_actividades_responsables
+                WHERE id_actividad = ? AND id_usuario = ?
+            ");
+            $stmt->execute([$invitacion['id_actividad'], $id_usuario]);
+            if (!$stmt->fetch()) {
+                db()->prepare("
+                    INSERT INTO gestion_actividades_responsables (id_actividad, id_usuario)
+                    VALUES (?, ?)
+                ")->execute([$invitacion['id_actividad'], $id_usuario]);
+
+                // Si la actividad no tiene asignado_a principal, ponerlo
+                db()->prepare("
+                    UPDATE gestion_actividades
+                    SET asignado_a = COALESCE(asignado_a, ?)
+                    WHERE id_actividad = ?
+                ")->execute([$id_usuario, $invitacion['id_actividad']]);
+            }
+        }
+
         db()->prepare("
             UPDATE gestion_invitaciones SET estado = 'aceptada', aceptado_en = NOW()
             WHERE id_invitacion = ?

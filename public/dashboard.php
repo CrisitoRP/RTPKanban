@@ -32,9 +32,10 @@ $actividades = [];
 if ($ids) {
     $in = implode(',', array_fill(0, count($ids), '?'));
     $stmt = db()->prepare("
-        SELECT a.*, p.nombre AS proyecto_nombre
+        SELECT a.*, p.nombre AS proyecto_nombre, u.nombre_completo AS responsable_nombre
         FROM gestion_actividades a
         JOIN gestion_proyectos p ON p.id_proyecto = a.id_proyecto
+        LEFT JOIN gestion_usuarios u ON u.id_usuario = a.asignado_a
         WHERE a.id_proyecto IN ($in) AND a.archivada = FALSE AND a.eliminada = FALSE
         ORDER BY a.fecha_limite NULLS LAST, a.creado_en DESC
     ");
@@ -49,6 +50,30 @@ $act_no_cumplidas = array_values(array_filter($actividades, function($a) {
     if ($a['fecha_limite'] && $a['fecha_limite'] < date('Y-m-d') && $a['estado'] !== 'completada') return true;
     return false;
 }));
+
+// Cálculo de contadores para leyendas
+$c_semaforo = ['completadas' => 0, 'en_curso' => 0, 'en_revision' => 0, 'por_hacer' => 0, 'bloqueadas' => 0];
+$c_carga    = ['verde' => 0, 'naranja' => 0, 'rojo' => 0];
+
+$hoy = strtotime(date('Y-m-d'));
+$hoy7 = strtotime(date('Y-m-d', strtotime('+7 days')));
+
+foreach ($actividades as $a) {
+    if ($a['estado'] === 'completada') $c_semaforo['completadas']++;
+    elseif ($a['estado'] === 'en_curso') $c_semaforo['en_curso']++;
+    elseif ($a['estado'] === 'en_revision') $c_semaforo['en_revision']++;
+    elseif ($a['estado'] === 'por_hacer') $c_semaforo['por_hacer']++;
+    elseif ($a['estado'] === 'bloqueado') $c_semaforo['bloqueadas']++;
+
+    if ($a['estado'] === 'completada') {
+        $c_carga['verde']++;
+    } elseif ($a['fecha_limite']) {
+        $ts = strtotime($a['fecha_limite']);
+        if ($ts > $hoy7) $c_carga['verde']++;
+        elseif ($ts >= $hoy && $ts <= $hoy7) $c_carga['naranja']++;
+        else $c_carga['rojo']++;
+    }
+}
 
 function slim_proyectos($lista) {
     return array_map(fn($p) => [
@@ -70,6 +95,7 @@ function slim_actividades($lista) {
         'proyecto_nombre' => $a['proyecto_nombre'] ?? '—',
         'fecha_limite'    => $a['fecha_limite'],
         'prioridad'       => $a['prioridad'],
+        'responsable'     => $a['responsable_nombre'] ?? 'Sin asignar'
     ], $lista);
 }
 ?>
@@ -82,35 +108,22 @@ function slim_actividades($lista) {
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
-/* ============================================================
-   BOTONES DE GRÁFICOS · Hover con sombra verde
-   ============================================================ */
 .chart-btn {
     transition: all .2s ease !important;
     position: relative;
 }
-
-/* Hover: se eleva con sombra verde */
 .chart-btn:hover {
     background: var(--rtp-verde);
     color: white;
     border-color: var(--rtp-verde);
     transform: translateY(-2px);
-    box-shadow:
-        0 6px 16px rgba(120, 190, 32, 0.35),
-        0 2px 6px rgba(120, 190, 32, 0.2);
+    box-shadow: 0 6px 16px rgba(120, 190, 32, 0.35), 0 2px 6px rgba(120, 190, 32, 0.2);
     filter: brightness(1.05);
 }
-
-/* Active: se hunde ligeramente */
 .chart-btn:active {
     transform: translateY(0);
-    box-shadow:
-        0 2px 6px rgba(120, 190, 32, 0.3),
-        inset 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 6px rgba(120, 190, 32, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
-
-/* Efecto adicional: tooltip verde en hover */
 .chart-btn:hover::after {
     content: attr(title);
     position: absolute;
@@ -130,39 +143,65 @@ function slim_actividades($lista) {
 }
 
 /* ============================================================
-   TARJETAS DE GRÁFICOS · Hover con sombra verde
+   🆕 RESALTADO GLOBAL: cualquier tarjeta opaca a TODAS las demás
    ============================================================ */
 .chart-card,
 .ring-card {
     transition: all .2s ease;
 }
-
 .chart-card:hover,
 .ring-card:hover {
     transform: translateY(-3px);
-    box-shadow:
-        0 8px 20px rgba(120, 190, 32, 0.2),
-        0 2px 6px rgba(120, 190, 32, 0.12);
+    box-shadow: 0 8px 20px rgba(120, 190, 32, 0.2), 0 2px 6px rgba(120, 190, 32, 0.12);
 }
 
-/* Atenuación de las demás tarjetas cuando el mouse está en una */
-.charts-grid:has(.chart-card:hover) .chart-card:not(:hover),
-.rings:has(.ring-card:hover) .ring-card:not(:hover) {
+/* Cuando hay hover en CUALQUIER tarjeta del dashboard,
+   TODAS las demás (sin importar el grid) se opacan */
+body:has(.chart-card:hover) .chart-card:not(:hover),
+body:has(.chart-card:hover) .ring-card,
+body:has(.ring-card:hover) .chart-card,
+body:has(.ring-card:hover) .ring-card:not(:hover) {
     opacity: 0.65;
     filter: grayscale(20%);
 }
 
-/* ============================================================
-   LEYENDAS DEL ANILLO · Hover con fondo verde suave
-   ============================================================ */
-.ring-legend span {
-    transition: all .2s ease;
+/* La tarjeta con hover siempre se ve a full */
+body:has(.chart-card:hover) .chart-card:hover,
+body:has(.ring-card:hover) .ring-card:hover {
+    opacity: 1;
+    filter: none;
 }
 
-.ring-legend span:hover {
+/* ============================================================
+   🆕 RESPIRACIÓN EN LOS CANVAS DE LOS ANILLOS
+   ============================================================ */
+.ring-card canvas {
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: center center;
+}
+.ring-card:hover canvas {
+    transform: scale(1.04);
+}
+
+/* LEYENDAS */
+.ring-legend span,
+.chart-legend span {
+    transition: transform .25s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                background-color .2s ease, 
+                color .2s ease, 
+                box-shadow .2s ease;
+    cursor: pointer;
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 6px;
+    margin: 2px;
+}
+.ring-legend span:hover,
+.chart-legend span:hover {
     background: #ecf9d9;
     color: var(--rtp-verde-dark);
-    transform: scale(1.05);
+    transform: scale(1.04);
+    box-shadow: 0 2px 6px rgba(120, 190, 32, 0.15);
 }
 </style>
 </head>
@@ -222,12 +261,12 @@ function slim_actividades($lista) {
                     </div>
                 </div>
                 <canvas id="chartSemaforo"></canvas>
-                <div class="chart-legend">
-                    <span><i style="background:#027a35"></i> Completadas</span>
-                    <span><i style="background:#266cb4"></i> En curso</span>
-                    <span><i style="background:#FDC60A"></i> En revisión</span>
-                    <span><i style="background:#B1B1B1"></i> Por hacer</span>
-                    <span><i style="background:#E5074C"></i> Bloqueadas</span>
+                <div class="chart-legend" id="legend-semaforo">
+                    <span data-legend="completadas"><i style="background:#027a35"></i> Completadas (<?= $c_semaforo['completadas'] ?>)</span>
+                    <span data-legend="en_curso"><i style="background:#266cb4"></i> En curso (<?= $c_semaforo['en_curso'] ?>)</span>
+                    <span data-legend="en_revision"><i style="background:#FDC60A"></i> En revisión (<?= $c_semaforo['en_revision'] ?>)</span>
+                    <span data-legend="por_hacer"><i style="background:#B1B1B1"></i> Por hacer (<?= $c_semaforo['por_hacer'] ?>)</span>
+                    <span data-legend="bloqueadas"><i style="background:#E5074C"></i> Bloqueadas (<?= $c_semaforo['bloqueadas'] ?>)</span>
                 </div>
             </div>
 
@@ -240,10 +279,10 @@ function slim_actividades($lista) {
                     </div>
                 </div>
                 <canvas id="chartCarga"></canvas>
-                <div class="chart-legend">
-                    <span><i style="background:#027a35"></i> Entregadas o +1 semana</span>
-                    <span><i style="background:#F08217"></i> Queda ≤ 1 semana</span>
-                    <span><i style="background:#E5074C"></i> Fecha límite vencida</span>
+                <div class="chart-legend" id="legend-carga">
+                    <span data-legend="carga_verde"><i style="background:#027a35"></i> Entregadas o +1 semana (<?= $c_carga['verde'] ?>)</span>
+                    <span data-legend="carga_naranja"><i style="background:#F08217"></i> Queda ≤ 1 semana (<?= $c_carga['naranja'] ?>)</span>
+                    <span data-legend="carga_rojo"><i style="background:#E5074C"></i> Fecha límite vencida (<?= $c_carga['rojo'] ?>)</span>
                 </div>
             </div>
         </div>
@@ -260,7 +299,7 @@ function slim_actividades($lista) {
                 <canvas id="chartAvanceTiempo"></canvas>
                 <div class="chart-legend">
                     <span><i style="background:#78BE20"></i> Avance real</span>
-                    <span><i style="background:#B1B1B1"></i> Tiempo transcurrido</span>
+                    <span><i style="background:#F08217"></i> Tiempo transcurrido</span>
                 </div>
             </div>
 
@@ -273,10 +312,10 @@ function slim_actividades($lista) {
                     </div>
                 </div>
                 <canvas id="chartUltimoAcceso"></canvas>
-                <div class="chart-legend">
-                    <span><i style="background:#027a35"></i> ≤ 7 días</span>
-                    <span><i style="background:#F08217"></i> 8-14 días</span>
-                    <span><i style="background:#E5074C"></i> > 14 días</span>
+                <div class="chart-legend" id="legend-acceso">
+                    <span data-legend="acceso_verde"><i style="background:#027a35"></i> ≤ 7 días</span>
+                    <span data-legend="acceso_naranja"><i style="background:#F08217"></i> 8-14 días</span>
+                    <span data-legend="acceso_rojo"><i style="background:#E5074C"></i> > 14 días</span>
                 </div>
             </div>
         </div>
@@ -329,7 +368,8 @@ window.DASH_DATA = {
         completadasList:  <?= json_encode(slim_actividades($act_completadas), JSON_UNESCAPED_UNICODE) ?>,
         enCursoList:      <?= json_encode(slim_actividades($act_en_curso), JSON_UNESCAPED_UNICODE) ?>,
         noCumplidasList:  <?= json_encode(slim_actividades($act_no_cumplidas), JSON_UNESCAPED_UNICODE) ?>
-    }
+    },
+    todasList: <?= json_encode(slim_actividades($actividades), JSON_UNESCAPED_UNICODE) ?>
 };
 </script>
 <script src="assets/js/dashboard.js"></script>

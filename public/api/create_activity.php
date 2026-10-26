@@ -22,6 +22,9 @@ if (!in_array($prioridad, ['baja','media','alta','critica'])) {
     $prioridad = 'media';
 }
 
+// 🔒 Verificar que el proyecto NO esté bloqueado
+bloquear_si_proyecto_bloqueado($id_proyecto);
+
 try {
     $stmt = db()->prepare("
         INSERT INTO gestion_actividades
@@ -40,6 +43,19 @@ try {
     ]);
 
     $id_actividad = $stmt->fetch()['id_actividad'];
+
+    // 📝 Registrar en el historial del proyecto
+    registrar_historial(
+        $id_proyecto,
+        'creacion',
+        'actividad_creada',
+        'Se creó la actividad "' . $titulo . '"',
+        [
+            'id_actividad' => $id_actividad,
+            'prioridad'    => $prioridad,
+            'fecha_limite' => $fecha
+        ]
+    );
 
     // Notificar al asignado si es otro usuario
     if ($asignado && $asignado != $user['id_usuario']) {
