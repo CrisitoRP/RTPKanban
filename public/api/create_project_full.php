@@ -16,15 +16,17 @@ $d = json_input();
 error_log("[create_project] Payload: " . json_encode($d, JSON_UNESCAPED_UNICODE));
 
 $nombre = trim($d['nombre'] ?? '');
-$actividades = $d['actividades'] ?? [];
-$invitaciones = $d['invitaciones'] ?? [];
+$fecha_inicio = $d['fecha_inicio'] ?? null;
+$fecha_fin = $d['fecha_fin'] ?? null;
 $fecha_apertura = $d['fecha_apertura'] ?? null;
+$invitaciones = $d['invitaciones'] ?? [];
 
-// 🔍 DEBUG: contadores
+// 🔍 DEBUG
 error_log("[create_project] Nombre: '$nombre'");
-error_log("[create_project] Actividades: " . count($actividades));
+error_log("[create_project] Fecha Inicio: " . ($fecha_inicio ?? 'NULL'));
+error_log("[create_project] Fecha Fin: " . ($fecha_fin ?? 'NULL'));
+error_log("[create_project] Fecha Apertura: " . ($fecha_apertura ?? 'NULL'));
 error_log("[create_project] Invitaciones: " . count($invitaciones));
-error_log("[create_project] Fecha apertura: " . ($fecha_apertura ?? 'NULL'));
 
 if (!$nombre) json_response(['error' => 'Falta el nombre del proyecto'], 400);
 
@@ -53,14 +55,16 @@ db()->beginTransaction();
 try {
     $stmt = db()->prepare("
         INSERT INTO gestion_proyectos
-            (nombre, id_responsable, creado_por, estado, fecha_apertura, abierto)
-        VALUES (?, ?, ?, 'activo', ?, ?)
+            (nombre, id_responsable, creado_por, estado, fecha_inicio, fecha_fin, fecha_apertura, abierto)
+        VALUES (?, ?, ?, 'activo', ?, ?, ?, ?)
         RETURNING id_proyecto
     ");
     $stmt->execute([
         $nombre,
         $user['id_usuario'],
         $user['id_usuario'],
+        $fecha_inicio ?: null,
+        $fecha_fin ?: null,
         $fecha_apertura_valida,
         $abierto ? 'true' : 'false'
     ]);
@@ -74,32 +78,13 @@ try {
         ON CONFLICT (id_proyecto, id_usuario) DO NOTHING
     ")->execute([$id_proyecto, $user['id_usuario']]);
 
-    // 2. Crear actividades
-    if (!empty($actividades)) {
-        $stmtAct = db()->prepare("
-            INSERT INTO gestion_actividades
-                (id_proyecto, titulo, estado, prioridad, fecha_limite, creado_por)
-            VALUES (?, ?, 'por_hacer', ?, ?, ?)
-        ");
-        foreach ($actividades as $a) {
-            $stmtAct->execute([
-                $id_proyecto,
-                $a['titulo'],
-                $a['prioridad'] ?? 'media',
-                !empty($a['fecha']) ? $a['fecha'] : null,
-                $user['id_usuario']
-            ]);
-        }
-        error_log("[create_project] " . count($actividades) . " actividades creadas");
-    }
-
     // 📝 Registrar en el historial
     registrar_historial(
         $id_proyecto,
         'creacion',
         'proyecto_creado',
         'Se creó el proyecto "' . $nombre . '"',
-        ['fecha_apertura' => $fecha_apertura_valida, 'abierto' => $abierto]
+        ['fecha_inicio' => $fecha_inicio, 'fecha_fin' => $fecha_fin, 'fecha_apertura' => $fecha_apertura_valida, 'abierto' => $abierto]
     );
 
     if (!$abierto && $fecha_apertura_valida) {

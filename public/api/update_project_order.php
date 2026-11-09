@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../src/auth.php';
 require_once __DIR__ . '/../../src/helpers.php';
+require_once __DIR__ . '/../../src/project_state.php';
 require_login();
 
 header('Content-Type: application/json');
@@ -14,72 +15,59 @@ if ($user['rol'] !== 'administrador') {
 
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
 
-// Función auxiliar para guardar en el historial (con protección de errores)
-function registrar_movimiento_manual($id_proyecto, $id_usuario, $nueva_columna) {
-    try {
-        $etapas = [
-            'sin_iniciar' => 'Sin iniciar',
-            'en_curso'    => 'En curso',
-            'en_revision' => 'En revisión',
-            'programado'  => 'Programados',
-            'finalizado'  => 'Finalizado',
-            'bloqueado'   => 'Bloqueado'
-        ];
-        $nombre_etapa = $etapas[$nueva_columna] ?? $nueva_columna;
-        $descripcion = "El proyecto fue movido MANUALMENTE a la etapa: " . $nombre_etapa;
-
-        $stmt = db()->prepare("
-            INSERT INTO gestion_historial_proyecto (id_proyecto, id_usuario, tipo, accion, descripcion)
-            VALUES (?, ?, 'edicion', 'mover_columna', ?)
-        ");
-        $stmt->execute([$id_proyecto, $id_usuario, $descripcion]);
-    } catch (Exception $e) {
-        // Si falla el historial, lo ignoramos para no bloquear el movimiento
-        error_log("Error al guardar historial: " . $e->getMessage());
+/* ========== FUNCIÓN AUXILIAR PARA EL HISTORIAL ========== */
+function registrar_historial_movimiento($id_proyecto, $id_usuario, $columna_destino, $fecha_apertura = null, $motivo = null) {
+    $etapas = [
+        'sin_iniciar' => 'Sin iniciar',
+        'en_curso'    => 'En curso',
+        'en_revision' => 'En revisión',
+        'programado'  => 'Programado',
+        'finalizado'  => 'Finalizado',
+        'bloqueado'   => 'Bloqueado'
+    ];
+    $nombre_etapa = $etapas[$columna_destino] ?? $columna_destino;
+    
+    // Texto limpio sin etiquetas HTML
+    $descripcion = "Movió el proyecto a la columna " . $nombre_etapa . ".";
+    
+    if ($columna_destino === 'programado' && $fecha_apertura) {
+        $fecha_formateada = date('d/m/Y H:i', strtotime($fecha_apertura));
+        $descripcion .= " Programado para abrirse el " . $fecha_formateada . ".";
     }
+    if ($columna_destino === 'bloqueado' && $motivo) {
+        $descripcion .= " Motivo: " . $motivo . ".";
+    }
+
+    $stmt = db()->prepare("
+        INSERT INTO gestion_historial_proyecto 
+        (id_proyecto, id_usuario, tipo, accion, descripcion, metadata, creado_en) 
+        VALUES (?, ?, 'edicion', 'movimiento_columna', ?, '{}', CURRENT_TIMESTAMP)
+    ");
+    $stmt->execute([$id_proyecto, $id_usuario, $descripcion]);
 }
 
-/* ============================================================
-   1) RESET GLOBAL
-   ============================================================ */
+/* ========== 1) RESET GLOBAL ========== */
 if (!empty($input['reset_all'])) {
-    db()->exec("UPDATE gestion_proyectos SET columna_manual = NULL, orden_manual = 0");
-    
-    // Registrar reset global en el historial de cada proyecto activo
-    try {
-        $stmtProyectos = db()->query("SELECT id_proyecto FROM gestion_proyectos WHERE archivado = FALSE AND eliminado = FALSE");
-        foreach ($stmtProyectos->fetchAll() as $p) {
-            registrar_movimiento_manual($p['id_proyecto'], $user['id_usuario'], 'sin_iniciar');
-        }
-    } catch (Exception $e) {
-        error_log("Error en reset global historial: " . $e->getMessage());
-    }
-
+    db()->exec("UPDATE gestion_proyectos SET columna_manual = NULL, orden_manual = 0, estado = 'activo', bloqueado = FALSE, fecha_apertura = NULL");
     echo json_encode(['ok' => true]);
     exit;
 }
 
-/* ============================================================
-   2) RESET DE UNA SOLA TARJETA
-   ============================================================ */
+/* ========== 2) RESET DE UNA SOLA TARJETA ========== */
 if (isset($input['id_proyecto']) && array_key_exists('columna_manual', $input) && $input['columna_manual'] === null) {
     $id = (int)$input['id_proyecto'];
-    $stmt = db()->prepare("UPDATE gestion_proyectos SET columna_manual = NULL, orden_manual = 0 WHERE id_proyecto = ?");
-    $stmt->execute([$id]);
-    
-    registrar_movimiento_manual($id, $user['id_usuario'], 'sin_iniciar'); // Vuelve a automático
-
+    db()->prepare("UPDATE gestion_proyectos SET columna_manual = NULL, orden_manual = 0, estado = 'activo', bloqueado = FALSE, fecha_apertura = NULL WHERE id_proyecto = ?")->execute([$id]);
     echo json_encode(['ok' => true]);
     exit;
 }
 
-/* ============================================================
-   3) MOVER UNA SOLA TARJETA (Drag & Drop o menú)
-   ============================================================ */
+/* ========== 3) MOVER UNA SOLA TARJETA ========== */
 if (isset($input['id_proyecto'], $input['columna_manual'])) {
-    $id = (int)$input['id_proyecto'];
-    $col = $input['columna_manual'];
+    $id    = (int)$input['id_proyecto'];
+    $col   = $input['columna_manual'];
     $orden = isset($input['orden']) ? (int)$input['orden'] : 0;
+    $fecha_apertura = $input['fecha_apertura'] ?? null;
+    $motivo = $input['motivo'] ?? null;
 
     $columnas_validas = ['sin_iniciar', 'en_curso', 'en_revision', 'programado', 'finalizado', 'bloqueado'];
     if (!in_array($col, $columnas_validas, true)) {
@@ -88,26 +76,59 @@ if (isset($input['id_proyecto'], $input['columna_manual'])) {
         exit;
     }
 
-    // Obtener columna anterior para ver si cambió
-    $stmtCheck = db()->prepare("SELECT columna_manual FROM gestion_proyectos WHERE id_proyecto = ?");
-    $stmtCheck->execute([$id]);
-    $col_anterior = $stmtCheck->fetchColumn();
+    // Obtener el estado anterior del proyecto para el historial
+    $stmtOld = db()->prepare("SELECT columna_manual FROM gestion_proyectos WHERE id_proyecto = ?");
+    $stmtOld->execute([$id]);
+    $oldData = $stmtOld->fetch();
+    $col_anterior = $oldData ? $oldData['columna_manual'] : null;
 
-    $stmt = db()->prepare("UPDATE gestion_proyectos SET columna_manual = ?, orden_manual = ? WHERE id_proyecto = ?");
-    $stmt->execute([$col, $orden, $id]);
-
-    // Solo registrar si realmente cambió de etapa
-    if ($col_anterior !== $col) {
-        registrar_movimiento_manual($id, $user['id_usuario'], $col);
+    // Manejo específico para PROGRAMADO
+    if ($col === 'programado') {
+        if (empty($fecha_apertura)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Se requiere fecha de apertura para programar.']);
+            exit;
+        }
+        
+        $stmt = db()->prepare("UPDATE gestion_proyectos SET columna_manual = ?, orden_manual = ?, fecha_apertura = ?, bloqueado = FALSE WHERE id_proyecto = ?");
+        $stmt->execute([$col, $orden, $fecha_apertura, $id]);
+        
+        if ($col_anterior !== 'programado') {
+            registrar_historial_movimiento($id, $user['id_usuario'], $col, $fecha_apertura, null);
+        }
+        
+        echo json_encode(['ok' => true]);
+        exit;
     }
 
+    // Manejo específico para BLOQUEADO
+    if ($col === 'bloqueado') {
+        $motivo = $motivo ?? 'Bloqueado manualmente';
+        
+        $stmt = db()->prepare("UPDATE gestion_proyectos SET columna_manual = ?, orden_manual = ?, bloqueado = TRUE, motivo_bloqueo = ?, bloqueado_en = CURRENT_TIMESTAMP, bloqueado_por = ? WHERE id_proyecto = ?");
+        $stmt->execute([$col, $orden, $motivo, $user['id_usuario'], $id]);
+        
+        if ($col_anterior !== 'bloqueado') {
+            registrar_historial_movimiento($id, $user['id_usuario'], $col, null, $motivo);
+        }
+        
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+
+    // Para las demás columnas, desbloqueamos y limpiamos la fecha de apertura
+    $stmt = db()->prepare("UPDATE gestion_proyectos SET columna_manual = ?, orden_manual = ?, bloqueado = FALSE, motivo_bloqueo = NULL, fecha_apertura = NULL WHERE id_proyecto = ?");
+    $stmt->execute([$col, $orden, $id]);
+    
+    if ($col_anterior !== $col) {
+        registrar_historial_movimiento($id, $user['id_usuario'], $col, null, null);
+    }
+    
     echo json_encode(['ok' => true]);
     exit;
 }
 
-/* ============================================================
-   4) GUARDAR ORDEN COMPLETO DE UNA COLUMNA
-   ============================================================ */
+/* ========== 4) GUARDAR ORDEN COMPLETO DE UNA COLUMNA ========== */
 if (isset($input['columna_manual'], $input['orden_lista']) && is_array($input['orden_lista'])) {
     $col = $input['columna_manual'];
     $columnas_validas = ['sin_iniciar', 'en_curso', 'en_revision', 'programado', 'finalizado', 'bloqueado'];
@@ -128,4 +149,4 @@ if (isset($input['columna_manual'], $input['orden_lista']) && is_array($input['o
 }
 
 http_response_code(400);
-echo json_encode(['error' => 'Solicitud inválida.']);
+echo json_encode(['error' => 'Solicitud inválida']);

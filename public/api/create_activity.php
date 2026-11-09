@@ -10,9 +10,14 @@ $d = json_input();
 $id_proyecto = $d['id_proyecto'] ?? 0;
 $titulo = trim($d['titulo'] ?? '');
 $descripcion = trim($d['descripcion'] ?? '');
-$fecha = $d['fecha'] ?? null;
+$fecha = $d['fecha'] ?? null;                     // fecha límite
 $prioridad = $d['prioridad'] ?? 'media';
 $asignado = $d['asignado_a'] ?? null;
+
+// ✅ Leer los campos que antes se ignoraban
+$fecha_inicio       = !empty($d['fecha_inicio']) ? $d['fecha_inicio'] : null;
+$porcentaje_aporte  = isset($d['porcentaje_aporte']) ? (float)$d['porcentaje_aporte'] : 0;
+$estado             = $d['estado'] ?? 'por_hacer';
 
 if (!$id_proyecto || !$titulo) {
     json_response(['error' => 'Faltan datos obligatorios'], 400);
@@ -22,23 +27,35 @@ if (!in_array($prioridad, ['baja','media','alta','critica'])) {
     $prioridad = 'media';
 }
 
+// Validar estado permitido
+if (!in_array($estado, ['por_hacer','en_curso','en_revision','programado','completada','bloqueado'])) {
+    $estado = 'por_hacer';
+}
+
+// Validar porcentaje
+if ($porcentaje_aporte < 0)   $porcentaje_aporte = 0;
+if ($porcentaje_aporte > 100) $porcentaje_aporte = 100;
+
 // 🔒 Verificar que el proyecto NO esté bloqueado
 bloquear_si_proyecto_bloqueado($id_proyecto);
 
 try {
     $stmt = db()->prepare("
         INSERT INTO gestion_actividades
-            (id_proyecto, titulo, descripcion, estado, prioridad, fecha_limite, asignado_a, creado_por)
-        VALUES (?, ?, ?, 'por_hacer', ?, ?, ?, ?)
+            (id_proyecto, titulo, descripcion, estado, prioridad, fecha_inicio, fecha_limite, asignado_a, porcentaje_aporte, creado_por)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         RETURNING id_actividad
     ");
     $stmt->execute([
         $id_proyecto,
         $titulo,
         $descripcion ?: null,
+        $estado,
         $prioridad,
+        $fecha_inicio ?: null,       // ✅ ahora SÍ se guarda
         $fecha ?: null,
         $asignado ?: null,
+        $porcentaje_aporte,          // ✅ ahora SÍ se guarda
         $user['id_usuario']
     ]);
 
@@ -51,9 +68,12 @@ try {
         'actividad_creada',
         'Se creó la actividad "' . $titulo . '"',
         [
-            'id_actividad' => $id_actividad,
-            'prioridad'    => $prioridad,
-            'fecha_limite' => $fecha
+            'id_actividad'      => $id_actividad,
+            'prioridad'         => $prioridad,
+            'fecha_inicio'      => $fecha_inicio,
+            'fecha_limite'      => $fecha,
+            'estado'            => $estado,
+            'porcentaje_aporte' => $porcentaje_aporte
         ]
     );
 

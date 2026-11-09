@@ -120,54 +120,7 @@ if ($user['rol'] === 'visualizador') {
 }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* ============ ACTIVIDADES ============ */
-.activity-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 16px;
-}
-.activity-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: #f8fafc;
-    border-radius: 10px;
-    border-left: 4px solid var(--rtp-verde);
-    transition: all .15s;
-}
-.activity-item:hover {
-    background: #ecf9d9;
-    box-shadow: 0 4px 12px rgba(120, 190, 32, 0.15);
-}
-.activity-item-info { flex: 1; }
-.activity-item-title {
-    font-weight: 700;
-    color: var(--rtp-negro);
-    font-size: 11.5pt;
-    margin-bottom: 2px;
-}
-.activity-item-meta { font-size: 10pt; color: var(--rtp-gris); }
-.activity-item-remove {
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    border: none;
-    background: #fee2e2;
-    color: #991b1b;
-    cursor: pointer;
-    font-size: 14pt;
-    font-weight: 700;
-    display: flex; align-items: center; justify-content: center;
-    transition: all .15s;
-}
-.activity-item-remove:hover {
-    background: var(--estado-rojo);
-    color: white;
-    transform: scale(1.1);
-}
-
-/* ============ PASO 3: FECHA DE INICIO ============ */
+/* ============ FECHA DE INICIO (TARJETAS) ============ */
 .apertura-opciones {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -229,7 +182,7 @@ if ($user['rol'] === 'visualizador') {
     line-height: 1.4;
 }
 
-/* Panel de programación (aparece si elige "Programar") */
+/* Panel de programación */
 .programacion-panel {
     display: none;
     background: #f8fafc;
@@ -237,6 +190,7 @@ if ($user['rol'] === 'visualizador') {
     padding: 22px 24px;
     border-left: 4px solid var(--rtp-guinda);
     margin-top: 6px;
+    margin-bottom: 22px;
     animation: slideDown .25s ease;
 }
 .programacion-panel.visible { display: block; }
@@ -269,53 +223,72 @@ if ($user['rol'] === 'visualizador') {
     transition: all .15s;
     cursor: pointer;
 }
-.programacion-panel input[type="date"]:hover,
-.programacion-panel input[type="time"]:hover {
-    border-color: var(--rtp-verde);
-}
 .programacion-panel input[type="date"]:focus,
 .programacion-panel input[type="time"]:focus {
     outline: none;
     border-color: var(--rtp-verde);
     box-shadow: 0 0 0 3px rgba(120, 190, 32, 0.15);
 }
-
-/* Color de los iconos nativos del calendario */
-.programacion-panel input[type="date"]::-webkit-calendar-picker-indicator,
-.programacion-panel input[type="time"]::-webkit-calendar-picker-indicator {
-    cursor: pointer;
-    filter: invert(48%) sepia(85%) saturate(1054%) hue-rotate(60deg) brightness(95%) contrast(90%);
-    transform: scale(1.2);
-}
-
 .programacion-panel .prog-grid {
     display: grid;
     grid-template-columns: 2fr 1fr;
     gap: 16px;
 }
-.programacion-panel .prog-hint {
-    font-size: 9.5pt;
-    color: var(--rtp-gris);
-    margin-top: 10px;
-    line-height: 1.5;
-    font-style: italic;
-}
-.programacion-panel .prog-hint b { color: var(--rtp-guinda); font-style: normal; }
 
-/* Preview de la fecha seleccionada */
-.prog-preview {
-    margin-top: 14px;
-    padding: 12px 16px;
-    background: #fff7ed;
-    border-left: 4px solid var(--rtp-dorado);
-    border-radius: 8px;
-    font-size: 10pt;
-    color: #78350f;
-    line-height: 1.5;
-    display: none;
+/* ============ FECHA DE FIN ============ */
+.date-row-fin {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    background: #f8fafc;
+    padding: 16px 20px;
+    border-radius: 12px;
+    border-left: 4px solid var(--rtp-verde);
 }
-.prog-preview.visible { display: block; }
-.prog-preview b { color: var(--rtp-guinda); }
+.date-row-fin input[type="date"] {
+    flex: 1;
+    padding: 10px 14px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 11pt;
+    font-family: inherit;
+    color: var(--rtp-guinda);
+    font-weight: 700;
+}
+.date-row-fin input[type="date"]:focus {
+    outline: none;
+    border-color: var(--rtp-verde);
+    box-shadow: 0 0 0 3px rgba(120, 190, 32, 0.15);
+}
+.date-row-fin input[type="date"]:disabled {
+    background: #e2e8f0;
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+.date-row-fin .date-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10pt;
+    color: var(--rtp-gris);
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.date-row-fin .date-check input {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--rtp-verde);
+}
+.date-hint {
+    font-size: 9.5pt;
+    color: #94a3b8;
+    font-style: italic;
+    margin-bottom: 16px;
+    line-height: 1.4;
+}
 
 /* ============ INVITACIONES ============ */
 .info-roles {
@@ -394,26 +367,6 @@ if ($user['rol'] === 'visualizador') {
     text-transform: capitalize;
 }
 
-.send-status {
-    padding: 12px 16px;
-    border-radius: 8px;
-    font-size: 10.5pt;
-    margin-top: 12px;
-    display: none;
-}
-.send-status.ok {
-    display: block;
-    background: #ecf9d9;
-    color: var(--estado-verde);
-    border-left: 4px solid var(--estado-verde);
-}
-.send-status.error {
-    display: block;
-    background: #fde8ec;
-    color: #991b1b;
-    border-left: 4px solid var(--estado-rojo);
-}
-
 .wizard-panel { display: none; }
 .wizard-panel.active { display: block; }
 </style>
@@ -433,19 +386,15 @@ if ($user['rol'] === 'visualizador') {
                 </div>
                 <div class="wizard-step" data-step="2">
                     <div class="step-num">2</div>
-                    <div class="step-label">Actividades<br>del proyecto</div>
+                    <div class="step-label">Fechas<br>del proyecto</div>
                 </div>
                 <div class="wizard-step" data-step="3">
                     <div class="step-num">3</div>
-                    <div class="step-label">Fecha de inicio<br>del proyecto</div>
-                </div>
-                <div class="wizard-step" data-step="4">
-                    <div class="step-num">4</div>
                     <div class="step-label">Invitar<br>usuarios</div>
                 </div>
             </div>
 
-            <!-- ============ PASO 1 ============ -->
+            <!-- ============ PASO 1: NOMBRE ============ -->
             <div class="wizard-panel active" id="panel1">
                 <div class="wizard-card">
                     <h2>Nombre del proyecto</h2>
@@ -463,37 +412,19 @@ if ($user['rol'] === 'visualizador') {
                 </div>
             </div>
 
-            <!-- ============ PASO 2 ============ -->
+            <!-- ============ PASO 2: FECHAS ============ -->
             <div class="wizard-panel" id="panel2">
                 <div class="wizard-card">
-                    <h2>Actividades del proyecto</h2>
-                    <p class="sub">Agrega todas las actividades que necesites. Puedes crear más después.</p>
+                    <h2>Fechas del proyecto</h2>
+                    <p class="sub">Define cuándo inicia y cuándo termina este proyecto.</p>
 
-                    <div id="activityList" class="activity-list"></div>
-
-                    <button class="btn btn-outline" onclick="abrirModalActividad()" style="width: 100%;">
-                        + Crear actividad
-                    </button>
-
-                    <div class="wizard-actions">
-                        <button class="btn btn-outline" onclick="irPaso1()">← Regresar</button>
-                        <button class="btn" onclick="irPaso3()">Siguiente →</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ============ PASO 3: FECHA DE INICIO ============ -->
-            <div class="wizard-panel" id="panel3">
-                <div class="wizard-card">
-                    <h2>Fecha de inicio del proyecto</h2>
-                    <p class="sub">Elige cuándo quieres que este proyecto esté disponible para el equipo.</p>
-
-                    <!-- Opciones -->
+                    <!-- FECHA DE INICIO -->
+                    <label class="prog-label" style="margin-top:0;">📅 Fecha de inicio (Apertura)</label>
                     <div class="apertura-opciones">
                         <div class="apertura-opcion" id="opAhora" onclick="seleccionarApertura('ahora')">
                             <span class="op-icon">⚡</span>
                             <div class="op-titulo">Disponible ahora mismo</div>
-                            <div class="op-desc">El proyecto se abrirá al instante. Todos podrán acceder de inmediato.</div>
+                            <div class="op-desc">El proyecto iniciará hoy mismo y todos podrán acceder.</div>
                         </div>
 
                         <div class="apertura-opcion" id="opProgramar" onclick="seleccionarApertura('programar')">
@@ -515,23 +446,32 @@ if ($user['rol'] === 'visualizador') {
                                 <input type="time" id="horaApertura" value="09:00" onchange="actualizarPreview()">
                             </div>
                         </div>
-
-                        <p class="prog-hint">
-                            💡 La fecha debe ser <b>posterior a hoy</b>. El proyecto estará oculto hasta ese momento.
+                        <p style="font-size:9.5pt; color:#94a3b8; margin-top:10px; font-style:italic;">
+                            💡 La fecha debe ser posterior a hoy.
                         </p>
-
-                        <div class="prog-preview" id="progPreview"></div>
                     </div>
 
+                    <!-- FECHA DE FIN -->
+                    <label class="prog-label" style="margin-top:22px;">🏁 Fecha de finalización</label>
+                    <div class="date-row-fin">
+                        <input type="date" id="fechaFin">
+                        <label class="date-check">
+                            <input type="checkbox" id="checkFechaFin" onchange="toggleFechaFin()"> Aún sin asignar
+                        </label>
+                    </div>
+                    <p class="date-hint">
+                        💡 Si no conoces la fecha de término exacta, puedes dejarla en blanco. Podrás agregarla o modificarla después desde el detalle del proyecto.
+                    </p>
+
                     <div class="wizard-actions">
-                        <button class="btn btn-outline" onclick="irPaso2()">← Regresar</button>
-                        <button class="btn" id="btnNext3" disabled onclick="irPaso4()">Siguiente →</button>
+                        <button class="btn btn-outline" onclick="irPaso1()">← Regresar</button>
+                        <button class="btn" id="btnNext2" onclick="irPaso3()">Siguiente →</button>
                     </div>
                 </div>
             </div>
 
-            <!-- ============ PASO 4: INVITAR ============ -->
-            <div class="wizard-panel" id="panel4">
+            <!-- ============ PASO 3: INVITAR ============ -->
+            <div class="wizard-panel" id="panel3">
                 <div class="wizard-card">
                     <h2>Invitar usuarios al proyecto</h2>
                     <p class="sub">Envía invitaciones por correo o comparte el link generado.</p>
@@ -571,7 +511,7 @@ if ($user['rol'] === 'visualizador') {
                     </div>
 
                     <div class="wizard-actions">
-                        <button class="btn btn-outline" onclick="irPaso3()">← Regresar</button>
+                        <button class="btn btn-outline" onclick="irPaso2()">← Regresar</button>
                         <button class="btn" id="btnFinalizar" onclick="finalizar()">✓ Crear proyecto</button>
                     </div>
                 </div>
@@ -581,49 +521,19 @@ if ($user['rol'] === 'visualizador') {
     </main>
 </div>
 
-<!-- ============ MODAL ACTIVIDAD ============ -->
-<div id="modalActividad" class="modal hidden">
-    <div class="modal-content">
-        <span class="close" onclick="cerrarModalActividad()">×</span>
-        <h2>Nueva actividad</h2>
-
-        <input type="text" class="input" id="actTitle" placeholder="Nombre de la actividad" maxlength="200">
-
-        <label style="display: block; margin-bottom: 6px; font-size: 10.5pt; color: var(--rtp-gris);">
-            Fecha de entrega:
-        </label>
-        <input type="date" class="input" id="actFecha">
-
-        <label style="display: block; margin: 8px 0 6px; font-size: 10.5pt; color: var(--rtp-gris);">
-            Prioridad:
-        </label>
-        <select class="input" id="actPrioridad">
-            <option value="baja">Baja</option>
-            <option value="media" selected>Media</option>
-            <option value="alta">Alta</option>
-            <option value="critica">Crítica</option>
-        </select>
-
-        <div style="display: flex; gap: 10px; margin-top: 16px;">
-            <button class="btn btn-outline" onclick="cerrarModalActividad()" style="flex: 1;">← Regresar</button>
-            <button class="btn" onclick="agregarActividad()" style="flex: 1;">✓ Aceptar</button>
-        </div>
-    </div>
-</div>
-
 <script>
 /* ============================================================ */
 /* ESTADO */
 /* ============================================================ */
 const state = {
     proyecto: { nombre: '' },
-    actividades: [],
-    invitaciones: [],
     apertura: {
         tipo: null,       // 'ahora' | 'programar'
         fecha: null,      // 'YYYY-MM-DD'
         hora: null        // 'HH:MM'
-    }
+    },
+    fecha_fin: null,
+    invitaciones: []
 };
 
 /* ============================================================ */
@@ -649,7 +559,6 @@ function irPaso2() {
 }
 
 function irPaso3() { mostrarPaso(3); }
-function irPaso4() { mostrarPaso(4); }
 
 /* ============================================================ */
 /* PASO 1 */
@@ -659,58 +568,7 @@ document.getElementById('proyectoNombre').addEventListener('input', function () 
 });
 
 /* ============================================================ */
-/* PASO 2 */
-/* ============================================================ */
-function abrirModalActividad() {
-    document.getElementById('actTitle').value = '';
-    document.getElementById('actFecha').value = '';
-    document.getElementById('actPrioridad').value = 'media';
-    document.getElementById('modalActividad').classList.remove('hidden');
-    setTimeout(() => document.getElementById('actTitle').focus(), 100);
-}
-
-function cerrarModalActividad() {
-    document.getElementById('modalActividad').classList.add('hidden');
-}
-
-function agregarActividad() {
-    const titulo = document.getElementById('actTitle').value.trim();
-    const fecha = document.getElementById('actFecha').value;
-    const prioridad = document.getElementById('actPrioridad').value;
-
-    if (!titulo) { alert('Escribe un nombre para la actividad.'); return; }
-    if (!fecha) { alert('Selecciona una fecha de entrega.'); return; }
-
-    state.actividades.push({ titulo, fecha, prioridad });
-    renderActividades();
-    cerrarModalActividad();
-}
-
-function eliminarActividad(idx) {
-    if (!confirm('¿Eliminar esta actividad?')) return;
-    state.actividades.splice(idx, 1);
-    renderActividades();
-}
-
-function renderActividades() {
-    const cont = document.getElementById('activityList');
-    if (!state.actividades.length) {
-        cont.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:20px;font-style:italic;font-size:10.5pt;">Aún no has agregado actividades.</p>';
-        return;
-    }
-    cont.innerHTML = state.actividades.map((a, i) => `
-        <div class="activity-item">
-            <div class="activity-item-info">
-                <div class="activity-item-title">📌 ${escapeHtml(a.titulo)}</div>
-                <div class="activity-item-meta">📅 Entrega: <b>${a.fecha}</b> · Prioridad: <b>${a.prioridad}</b></div>
-            </div>
-            <button class="activity-item-remove" onclick="eliminarActividad(${i})" title="Eliminar">×</button>
-        </div>
-    `).join('');
-}
-
-/* ============================================================ */
-/* PASO 3 · FECHA DE INICIO */
+/* PASO 2: APERTURA Y FECHA FIN */
 /* ============================================================ */
 function seleccionarApertura(tipo) {
     state.apertura.tipo = tipo;
@@ -722,15 +580,12 @@ function seleccionarApertura(tipo) {
     panel.classList.toggle('visible', tipo === 'programar');
 
     if (tipo === 'ahora') {
-        // Limpiar programación
         state.apertura.fecha = null;
         state.apertura.hora = null;
         document.getElementById('fechaApertura').value = '';
         document.getElementById('horaApertura').value = '09:00';
-        document.getElementById('progPreview').classList.remove('visible');
-        document.getElementById('btnNext3').disabled = false;
+        document.getElementById('btnNext2').disabled = false;
     } else {
-        // Establecer fecha mínima = mañana
         const hoy = new Date();
         hoy.setDate(hoy.getDate() + 1);
         const yyyy = hoy.getFullYear();
@@ -745,43 +600,24 @@ function seleccionarApertura(tipo) {
 function validarFechaProgramada() {
     const fecha = document.getElementById('fechaApertura').value;
     const hora = document.getElementById('horaApertura').value;
-    const preview = document.getElementById('progPreview');
-    const btn = document.getElementById('btnNext3');
+    const btn = document.getElementById('btnNext2');
 
     state.apertura.fecha = fecha || null;
     state.apertura.hora = hora || null;
 
     if (!fecha || !hora) {
         btn.disabled = true;
-        preview.classList.remove('visible');
         return;
     }
 
-    // Validar que la fecha+hora sea futura
     const fechaHora = new Date(`${fecha}T${hora}:00`);
     const ahora = new Date();
 
     if (fechaHora <= ahora) {
         btn.disabled = true;
-        preview.classList.add('visible');
-        preview.style.background = '#fde8ec';
-        preview.style.borderLeftColor = '#E5074C';
-        preview.style.color = '#991b1b';
-        preview.innerHTML = '⚠️ <b>Fecha inválida:</b> la fecha y hora deben ser posteriores a la actual.';
-        return;
+    } else {
+        btn.disabled = false;
     }
-
-    btn.disabled = false;
-    preview.classList.add('visible');
-    preview.style.background = '#fff7ed';
-    preview.style.borderLeftColor = '#F08217';
-    preview.style.color = '#78350f';
-
-    const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    const fechaBonita = fechaHora.toLocaleDateString('es-MX', opciones);
-    const horaBonita = fechaHora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-
-    preview.innerHTML = `⏳ El proyecto estará <b>programado</b> para abrirse el <b>${fechaBonita}</b> a las <b>${horaBonita}</b>. Hasta entonces no será visible.`;
 }
 
 function actualizarPreview() {
@@ -790,8 +626,21 @@ function actualizarPreview() {
     }
 }
 
+function toggleFechaFin() {
+    const check = document.getElementById('checkFechaFin');
+    const input = document.getElementById('fechaFin');
+    
+    if (check.checked) {
+        input.value = '';
+        input.disabled = true;
+        state.fecha_fin = null;
+    } else {
+        input.disabled = false;
+    }
+}
+
 /* ============================================================ */
-/* PASO 4 · INVITACIONES */
+/* PASO 3: INVITACIONES */
 /* ============================================================ */
 function validarFormInvite() {
     const email = document.getElementById('inviteEmail').value.trim();
@@ -849,15 +698,22 @@ function copiarLink() {
 async function finalizar() {
     if (!state.proyecto.nombre) { alert('Falta el nombre del proyecto.'); return; }
 
-    // Preparar fecha de apertura
     let fecha_apertura = null;
+    let fecha_inicio = null;
+
     if (state.apertura.tipo === 'programar') {
         if (!state.apertura.fecha || !state.apertura.hora) {
             alert('Debes seleccionar fecha y hora de apertura.');
             return;
         }
         fecha_apertura = `${state.apertura.fecha} ${state.apertura.hora}:00`;
+        fecha_inicio = state.apertura.fecha; // La fecha de inicio es el día de apertura
+    } else {
+        // Si es "Ahora", la fecha de inicio es HOY
+        fecha_inicio = new Date().toISOString().slice(0, 10);
     }
+
+    const fecha_fin = document.getElementById('checkFechaFin').checked ? null : document.getElementById('fechaFin').value;
 
     const btn = document.getElementById('btnFinalizar');
     btn.disabled = true;
@@ -869,9 +725,10 @@ async function finalizar() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 nombre: state.proyecto.nombre,
-                actividades: state.actividades,
-                invitaciones: state.invitaciones,
-                fecha_apertura: fecha_apertura
+                fecha_inicio: fecha_inicio,
+                fecha_fin: fecha_fin || null,
+                fecha_apertura: fecha_apertura,
+                invitaciones: state.invitaciones
             })
         });
 
@@ -884,22 +741,13 @@ async function finalizar() {
             return;
         }
 
-        // Mensaje de éxito
-        let mensaje = '✅ Proyecto creado\n\n' +
-                      '📋 Actividades: ' + state.actividades.length + '\n';
-
+        let mensaje = '✅ Proyecto creado exitosamente.';
         if (json.invitaciones_resultados && json.invitaciones_resultados.length) {
             let ok = 0, fail = 0;
             json.invitaciones_resultados.forEach(r => r.ok ? ok++ : fail++);
-            mensaje += '✉️ Invitaciones enviadas: ' + ok;
+            mensaje += '\n✉️ Invitaciones enviadas: ' + ok;
             if (fail) mensaje += '\n⚠️ Fallidas: ' + fail;
         }
-
-        if (json.abierto === false && json.fecha_apertura) {
-            const fh = new Date(json.fecha_apertura);
-            mensaje += '\n\n⏳ El proyecto se abrirá el ' + fh.toLocaleDateString('es-MX') + ' a las ' + fh.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-        }
-
         alert(mensaje);
         window.location.href = 'project_detail.php?id=' + json.id_proyecto;
 
@@ -910,22 +758,11 @@ async function finalizar() {
     }
 }
 
-/* ============================================================ */
-/* HELPERS */
-/* ============================================================ */
 function escapeHtml(s) {
     return (s || '').replace(/[&<>"']/g, c => ({
         '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
     }[c]));
 }
-
-document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') cerrarModalActividad();
-});
-
-document.getElementById('modalActividad').addEventListener('click', function (e) {
-    if (e.target === this) cerrarModalActividad();
-});
 </script>
 </body>
 </html>
